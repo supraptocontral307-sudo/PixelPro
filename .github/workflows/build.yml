@@ -40,7 +40,8 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      -       - name: Extract project
+      -
+      - name: Extract project
         run: |
           ZIP_FILE=$(find . -maxdepth 2 -type f -iname "*.zip" -print -quit)
 
@@ -54,6 +55,7 @@ jobs:
           unzip -q "$ZIP_FILE" -d .
 
           test -f PixelPro/settings.gradle.kts
+
 
       - name: Build APK
         working-directory: PixelPro
