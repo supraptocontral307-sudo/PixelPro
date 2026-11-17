@@ -24,12 +24,12 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Install Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Accept Android SDK licenses
-        run: |
-          yes | sdkmanager --licenses
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: false
+          packages: ''
 
       - name: Install SDK packages
         run: |
@@ -41,13 +41,11 @@ jobs:
           gradle-version: '8.9'
 
       - name: Extract project
-        run: |
-          unzip -q PixelPro-Android-Phone-Build.zip
+        run: unzip -q PixelPro-Android-Phone-Build.zip
 
       - name: Build APK
         working-directory: PixelPro
-        run: |
-          gradle --no-daemon assembleDebug
+        run: gradle --no-daemon assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
