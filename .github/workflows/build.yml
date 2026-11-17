@@ -1,3 +1,4 @@
+
 name: Build PixelPro APK
 
 on:
@@ -25,42 +26,52 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
-        with:
-          accept-android-sdk-licenses: true
-          log-accepted-android-sdk-licenses: false
-          packages: ''
 
       - name: Install Android SDK packages
         run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          sdkmanager --install \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Extract project ZIP
+      - name: Locate Android project
         run: |
-          ZIP_FILE=$(find . -maxdepth 2 -type f -iname '*.zip' -print -quit)
-          if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: Tidak menemukan file ZIP proyek di repository."
-            find . -maxdepth 2 -type f -print
-            exit 1
-          fi
-          echo "Menggunakan file: $ZIP_FILE"
-          unzip -q "$ZIP_FILE" -d extracted
-          if [ -f extracted/PixelPro/settings.gradle.kts ]; then
-            echo "PROJECT_DIR=extracted/PixelPro" >> "$GITHUB_ENV"
-          elif [ -f extracted/settings.gradle.kts ]; then
-            echo "PROJECT_DIR=extracted" >> "$GITHUB_ENV"
+          if [ -f "settings.gradle.kts" ]; then
+            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+
+          elif [ -f "PixelPro/settings.gradle.kts" ]; then
+            echo "PROJECT_DIR=PixelPro" >> "$GITHUB_ENV"
+
           else
-            echo "ERROR: settings.gradle.kts tidak ditemukan setelah ZIP diekstrak."
-            find extracted -maxdepth 4 -type f -name settings.gradle.kts -print
-            exit 1
+            ZIP_FILE=$(find . -maxdepth 3 -type f -iname '*.zip' -print -quit)
+
+            if [ -z "$ZIP_FILE" ]; then
+              echo "ERROR: Proyek Android tidak ditemukan."
+              find . -maxdepth 4 -type f | head -200
+              exit 1
+            fi
+
+            mkdir -p extracted
+            unzip -q "$ZIP_FILE" -d extracted
+
+            PROJECT_FILE=$(find extracted -type f -name settings.gradle.kts -print -quit)
+
+            if [ -z "$PROJECT_FILE" ]; then
+              echo "ERROR: settings.gradle.kts tidak ditemukan."
+              exit 1
+            fi
+
+            PROJECT_DIR=$(dirname "$PROJECT_FILE")
+            echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           fi
 
       - name: Build debug APK
-        run: gradle --no-daemon -p "$PROJECT_DIR" assembleDebug
+        run: |
+          gradle --no-daemon -p "$PROJECT_DIR" assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
