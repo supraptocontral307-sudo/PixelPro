@@ -23,36 +23,48 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
           accept-android-sdk-licenses: true
           log-accepted-android-sdk-licenses: false
-          packages: 'platforms;android-35 build-tools;35.0.0'
+          packages: ''
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Extract project
+      - name: Extract project ZIP
         run: |
-          ZIP_FILE=$(find . -maxdepth 2 -type f -iname "*.zip" -print -quit)
+          ZIP_FILE=$(find . -maxdepth 2 -type f -iname '*.zip' -print -quit)
           if [ -z "$ZIP_FILE" ]; then
-            echo "ZIP tidak ditemukan"
-            ls -lah
+            echo "ERROR: Tidak menemukan file ZIP proyek di repository."
+            find . -maxdepth 2 -type f -print
             exit 1
           fi
           echo "Menggunakan file: $ZIP_FILE"
-          unzip -q "$ZIP_FILE" -d .
-          test -f PixelPro/settings.gradle.kts
+          unzip -q "$ZIP_FILE" -d extracted
+          if [ -f extracted/PixelPro/settings.gradle.kts ]; then
+            echo "PROJECT_DIR=extracted/PixelPro" >> "$GITHUB_ENV"
+          elif [ -f extracted/settings.gradle.kts ]; then
+            echo "PROJECT_DIR=extracted" >> "$GITHUB_ENV"
+          else
+            echo "ERROR: settings.gradle.kts tidak ditemukan setelah ZIP diekstrak."
+            find extracted -maxdepth 4 -type f -name settings.gradle.kts -print
+            exit 1
+          fi
 
-      - name: Build APK
-        working-directory: PixelPro
-        run: gradle --no-daemon assembleDebug
+      - name: Build debug APK
+        run: gradle --no-daemon -p "$PROJECT_DIR" assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PixelPro-APK
-          path: PixelPro/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
