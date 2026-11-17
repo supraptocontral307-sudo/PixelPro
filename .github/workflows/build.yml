@@ -40,21 +40,30 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      -
+      
       - name: Extract project
         run: |
           ZIP_FILE=$(find . -maxdepth 2 -type f -iname "*.zip" -print -quit)
-
           if [ -z "$ZIP_FILE" ]; then
-            echo "File ZIP tidak ditemukan di repository"
+            echo "ZIP tidak ditemukan"
             ls -lah
             exit 1
           fi
-
           echo "Menggunakan file: $ZIP_FILE"
           unzip -q "$ZIP_FILE" -d .
-
           test -f PixelPro/settings.gradle.kts
+
+      - name: Build APK
+        working-directory: PixelPro
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixelPro-APK
+          path: PixelPro/app/build/outputs/apk/debug/app-debug.apk
+
+      
 
 
       - name: Build APK
